@@ -1,0 +1,10 @@
+##gff-version 3
+##sequence-region contig_1 1 4096
+contig_1	RefSeq	gene	197	2083	.	+	.	ID=buch_gene0;Dbxref=GeneID:1109510;Name=gidA;gbkey=Gene;gene=gidA;gene_biotype=protein_coding;locus_tag=BU001
+contig_1	RefSeq	CDS	197	2083	.	+	0	ID=cds0;Parent=buch_gene0;Dbxref=Genbank:NP_239843.1,GeneID:1109510;Name=NP_239843.1;gbkey=CDS;gene=gidA;product=tRNA uridine 5-carboxymethylaminomethyl modification protein GidA;protein_id=NP_239843.1;transl_table=11
+contig_1	RefSeq	gene	2278	3102	.	+	.	ID=buch_gene1;Dbxref=GeneID:1109511;Name=atpB;gbkey=Gene;gene=atpB;gene_biotype=protein_coding;locus_tag=BU002
+contig_1	RefSeq	CDS	2278	3102	.	+	0	ID=cds1;Parent=buch_gene1;Dbxref=Genbank:NP_239844.1,GeneID:1109511;Name=NP_239844.1;gbkey=CDS;gene=atpB;product=ATP synthase F0F1 subunit A;protein_id=NP_239844.1;transl_table=11
+contig_1	RefSeq	gene	3139	3378	.	+	.	ID=buch_gene2;Dbxref=GeneID:1109512;Name=atpE;gbkey=Gene;gene=atpE;gene_biotype=protein_coding;locus_tag=BU003
+contig_1	RefSeq	CDS	3139	3378	.	+	0	ID=cds2;Parent=buch_gene2;Dbxref=Genbank:NP_239845.1,GeneID:1109512;Name=NP_239845.1;gbkey=CDS;gene=atpE;product=ATP synthase F0F1 subunit C;protein_id=NP_239845.1;transl_table=11
+contig_1	RefSeq	gene	3497	3982	.	+	.	ID=buch_gene3;Dbxref=GeneID:1109513;Name=atpF;gbkey=Gene;gene=atpF;gene_biotype=protein_coding;locus_tag=BU004
+contig_1	RefSeq	CDS	3497	3982	.	+	0	ID=cds3;Parent=buch_gene3;Dbxref=Genbank:NP_239846.1,GeneID:1109513;Name=NP_239846.1;gbkey=CDS;gene=atpF;product=ATP synthase F0F1 subunit B;protein_id=NP_239846.1;transl_table=11

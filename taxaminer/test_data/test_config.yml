@@ -1,0 +1,7 @@
+fasta_path: "assembly.fa"
+gff_path: "annotation.gff"
+output_path: "./report/"
+taxon_id: "107806"
+read_paths_1: ["reads.fa"]
+database_path: "test_db.dmnd"
+taxon_exclude: "FALSE"
