@@ -14,31 +14,39 @@ Besides the taxonomic assignment of genes, taXaminer uses a total of 16 further 
 
 # Installation
 
-## Using Conda
-Dependencies for *taXaminer* can be installed within a [conda](https://docs.conda.io/projects/conda/en/latest/user-guide/install/) environment. For this, run:
+To install taXaminer, use the python package installer pip.
 ```
-./setup_conda.sh
+pip install taxaminer
 ```
-The script will create the new environment 'taxaminer' and download and install all required dependencies - this step will take a while. *(Note: Depending on your system this sometimes fails, please check the console log for error messages concerning the dependency installation)*
 
-## Preparation of reference database
-To prepare the reference database for taxonomic assignment of the gene set, run:
+To install additional dependencies, use the setup function included in taXaminer. You can install the tools either via conda or locally in a specified directory.
+
+Using conda:
 ```
-./setup_db.sh
+taxaminer.setup --conda
 ```
-This downloads the most recent NCBI non-redundant protein database and all additional files into the working directory to create a DIAMOND formatted version of it. 
+In a local directory:
+```
+taxaminer.setup --o </path/to/tool/directory/>
+```
+To download and build the database, use:
+```
+taxaminer.setup --db -d </path/to/database/directory/>
+```
+Use the following command to use an existing database.
+```
+taxaminer.setup -d </path/to/existing_database/directory/>
+```
 
 # Usage
-1. Make a copy of the default config file 'config.yml' from the taXaminer directory
-2. Adjust the following parameters to fit your data:
+1. Create a configuration file using the following template and adapt it to fit your data.
 ```
 fasta_path: "path/to/assembly.fasta" # path to assembly FASTA
 gff_path: "path/to/assembly.gff" # path to annotation in GFF3 format
 output_path: "path/to/output_directory/" # directory to save results in
 taxon_id: "<NCBI taxon ID>" # NCBI Taxon ID of query species
-database_path: "path/to/database.dmnd" # path to database for taxonomic assignment
 ```
-3. To include coverage information, adapt one of the following parameters (this is optional):
+2. To include coverage information, add one of the following parameters according to your data (this is optional).
 ```
 pbc_path_1: "path/to/pbc.txt" # path to PBC file; omit to use default location in output directory
 bam_path_1: "path/to/mapping.bam" # path to BAM file; omit to use default location in output directory
@@ -47,26 +55,22 @@ read_paths_1: ["path/to/read_file_1.fa","path/to/read_file_2.fa"] # path to read
 * Note: When using multiple coverage sets, duplicate the parameter you need and increase the number in the suffix
 
 
-Make sure to activate the conda environment before running *taXaminer*. To run *taXaminer* on a SLURM cluster environment (recommended), enter:
+To run taXaminer, call it with the path to the config file, like so:
 ```
-sbatch taxaminer.slurm <config.yml>
-```
-To run it locally, use:
-```
-python taxaminer.py <config.yml>
+taxaminer.run <config.yml>
 ```
 
 For details on additional options see [Configuration parameters](https://github.com/BIONF/taXaminer/wiki/Configuration-parameters). 
 
 # Bugs
-Any bug reports, comments or suggestions are highly appreciated. Please [open an issue on GitHub](https://github.com/BIONF/taXaminer/issues/new) or reach out via [email](mailto:freya.hubert@gmail.com).
+Any bug reports, comments or suggestions are highly appreciated. Please [open an issue on GitHub](https://github.com/BIONF/taXaminer/issues/new) or reach out via [email](mailto:f.arthen@bio.uni-frankfurt.de).
 
 # Contributors
-* [Freya Arthen](https://github.com/fdhubert)
+* [Freya Arthen](https://github.com/fdarthen)
 * Simonida Zehr
 
 # License
 *taXaminer* is released under [MIT license](https://github.com/BIONF/taXaminer/blob/master/LICENSE).
 
 # Contact
-Please contact us via [email](mailto:freya.hubert@gmail.com).
+Please contact us via [email](mailto:f.arthen@bio.uni-frankfurt.de).
