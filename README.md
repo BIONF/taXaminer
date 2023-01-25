@@ -27,7 +27,7 @@ taxaminer.setup --conda
 ```
 In a local directory:
 ```
-taxaminer.setup --o </path/to/tool/directory/>
+taxaminer.setup -o </path/to/tool/directory/>
 ```
 To download and build the database, use:
 ```
