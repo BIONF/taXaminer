@@ -13,12 +13,16 @@ __author__ = "Freya Arthen"
 __version__ = "0.6.0"
 
 # package specific modules
+import pickle
+
 from . import reduceDims
 from . import createOutput
-from . import checkData
+from . import checkInput
 from . import prepareData
 from . import compFeatures
 from . import compTaxonomicAssignment
+from . import parseGFF
+from . import createContigOverview
 
 import os
 import sys
@@ -95,90 +99,72 @@ def main():
 
     database_dir = eval(open(f"{SCRIPT_DIR}/pathconfig.txt",
                              'r').readline().strip()).get('data_path')
+
+    # TODO: precompute the tax_db during setup
     TAX_DB = taxopy.TaxDb(nodes_dmp=database_dir + "/nodes.dmp",
                           names_dmp=database_dir + "/names.dmp",
                           merged_dmp=database_dir + "/merged.dmp",
                           keep_files=True)
 
+    # f = open('tax_db.obj', 'wb')
+    # pickle.dump(TAX_DB, f)
+    # f.close()
+
+    # f = open('tax_db.obj', 'rb')
+    # TAX_DB = pickle.load(f)
+    # f.close()
+
+
     ## create config file to be used by subsequent modules
     # includes default for parameters not given by user and checks
     # file existence of required files and files to be computed in pipeline
-    checkData.process_config(args.config_path, SCRIPT_DIR, TAX_DB)
+    checkInput.process_config(args.config_path, SCRIPT_DIR, TAX_DB)
     # create class object with configuration parameters
-    cfg = checkData.cfg2obj(output_path+'tmp/tmp.cfg.yml')
+    cfg = checkInput.cfg2obj(output_path+'tmp/tmp.cfg.yml')
 
 
+    pre_time = time.time()
+    logging.info('> parsing GFF file')
+    gff_df = parseGFF.process(cfg)
+    logging.debug(f'finished [{int(time.time() - pre_time)}s]\n')
 
     if not cfg.update_plots:
 
-        if not os.path.isfile(f'{cfg.output_path}tmp/tmp.taxaminer.fasta.fai'):
-            pre_time = time.time()
-            logging.info('>>> creating genomic FASTA index')
-            cmd_faidx_g = f'{cfg.samtools} faidx "{cfg.fasta_path}" -o ' \
-                          f'"{cfg.output_path}tmp/tmp.taxaminer.fasta.fai"'
-            out_faidx_g = subprocess.run([cmd_faidx_g], shell=True, capture_output=True)
-            if out_faidx_g.returncode != 0:
-                logging.error(f'creation of genomic FASTA index failed:\n{cmd_faidx_g}')
-                logging.error('Error message:\n'+out_faidx_g.stderr.decode())
-                sys.exit()
-            logging.debug(f'finished [{int(time.time()-pre_time)}s]\n')
-        else:
-            logging.info("genomic FASTA index file exists")
-
         ## make data integrity checks
         # check GFF and assembly FASTA for ID compatibility
-        checkData.check_assembly_ids(cfg)
-
-        if cfg.compute_coverage:
-            pre_time = time.time()
-            logging.info('>>> calculating coverage information')
-            prepareData.process_coverage(cfg)
-            logging.debug(f'finished [{int(time.time()-pre_time)}s]\n')
-
-        if cfg.include_coverage:
-            pass
-            checkData.check_pbc_ids(cfg)
+        #checkInput.check_assembly_ids(cfg)
 
         pre_time = time.time()
-        logging.info('>>> computing gene descriptors')
-        compFeatures.process_gene_info(cfg)
+        logging.info('> computing gene descriptors')
+        compFeatures.process_gene_info(cfg, gff_df)
         logging.debug(f'finished [{int(time.time()-pre_time)}s]\n')
 
         pre_time = time.time()
-        logging.info('>>> executing PCA and clustering')
+        logging.info('> executing PCA and clustering')
         pca_obj, pca_coordinates, variables = reduceDims.compute_pca(cfg)
         logging.debug(f'finished [{int(time.time()-pre_time)}s]\n')
 
-        if cfg.extract_proteins:
-            pre_time = time.time()
-            logging.info('>>> extracting protein sequences')
-            prepareData.generate_fasta(cfg)
-            logging.debug(f'finished [{int(time.time()-pre_time)}s]\n')
-        else:
-            # create symlink if proteins.faa file does not exist in taxaminer
-            # report (for GUI)
-            if not pathlib.Path(cfg.output_path+'proteins.faa').exists():
-                pathlib.Path(cfg.output_path+'proteins.faa').symlink_to(pathlib.Path(cfg.proteins_path).resolve())
+        # create symlink if proteins.faa file does not exist in taxaminer
+        # report (for dashboard)
+        if not pathlib.Path(cfg.output_path+'proteins.faa').exists():
+            pathlib.Path(cfg.output_path+'proteins.faa').symlink_to(pathlib.Path(cfg.proteins_path).resolve())
 
     pre_time = time.time()
-    logging.info('>>> creating protein FASTA index')
-    cmd_faidx_p = f'{cfg.samtools} faidx "{cfg.proteins_path}" -o "{cfg.output_path}tmp/tmp.proteins.fa.fai"'
-    out_faidx_p = subprocess.run([cmd_faidx_p], shell=True, capture_output=True)
-    if out_faidx_p.returncode != 0:
-        logging.error(f'creation of protein FASTA index failed:\n{cmd_faidx_p}')
-        logging.error('Error message:\n'+out_faidx_p.stderr.decode())
-        sys.exit()
+    logging.info('> running taxonomic assignment')
+    taxonomic_assignment, query_label = compTaxonomicAssignment.run_assignment(cfg, gff_df, pca_coordinates, TAX_DB)
     logging.debug(f'finished [{int(time.time()-pre_time)}s]\n')
 
     pre_time = time.time()
-    logging.info('>>> running taxonomic assignment')
-    genes = compTaxonomicAssignment.run_assignment(cfg, pca_coordinates, TAX_DB)
-    logging.debug(f'finished [{int(time.time()-pre_time)}s]\n')
+    logging.info('> creating plots')
+    all_data_df = createOutput.create_plots(cfg, taxonomic_assignment, pca_obj,
+                                            variables, pca_coordinates,
+                                            query_label, TAX_DB, gff_df)
+    logging.debug(f'finished [{int(time.time() - pre_time)}s]\n')
 
-    pre_time = time.time()
-    logging.info('>>> creating plots')
-    createOutput.create_plots(cfg, genes, pca_obj, variables,
-                                pca_coordinates, TAX_DB)
+    # pre_time = time.time()
+    # logging.info('> creating contig summary')
+    # createContigOverview.process_assignments(cfg, gff_df, all_data_df, TAX_DB)
+    # logging.debug(f'finished [{int(time.time() - pre_time)}s]\n')
 
 
     # make HTML file self-contained, text selectable and change title
@@ -187,7 +173,7 @@ def main():
     if args.keep:
         try:
             pre_time = time.time()
-            logging.info('>>> deleting temporary files')
+            logging.info('> deleting temporary files')
             shutil.rmtree(f"{cfg.output_path}tmp/")
             logging.debug(f'finished [{int(time.time()-pre_time)}s]\n')
         except OSError as e:

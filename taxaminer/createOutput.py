@@ -18,7 +18,7 @@ from jsmin import jsmin
 
 import json
 
-from . import checkData
+from . import checkInput
 from . import reduceDims
 from . import compFeatures
 
@@ -54,17 +54,15 @@ def rotate_z(x, y, z, theta):
     return np.real(np.exp(1j * theta) * c), np.imag(np.exp(1j * theta) * c), z
 
 
-def gene_obj2panda(genes):
-    columns = next(iter(genes.values()))
-    index = genes.keys()
+def gene_data2panda(cfg, assignment_df, pca_coordinates):
+    gene_features = pd.read_csv(f"{cfg.output_path}gene_info/raw_gene_table.csv",
+                                index_col=0)
 
-    # Passing a dictionary
-    # key: column name
-    # value: series of values
-    df = pd.DataFrame.from_dict(
-        [gene.__dict__ for gene in genes.values()])  # columns=columns,
+    df = gene_features.merge(
+        pca_coordinates, left_index=True, right_index=True).merge(
+        assignment_df, left_index=True, right_index=True)
 
-    return df.set_index('g_name')
+    return df
 
 
 def insert_string2string(string, insert_string, interval):
@@ -76,62 +74,17 @@ def insert_string2string(string, insert_string, interval):
 
 
 def assess_superkingdom(plot_df):
-    # TODO: test function, was part of create_3D_plot()
     # get unique plot labels
     plot_labelIDs = plot_df['plot_labelID'].unique()
     # identify their respective superkingdom
     for id in plot_labelIDs:
-        if not id == 'NA':
+        if not pd.isna(id):
             taxon = taxopy.Taxon(id, TAX_DB)
             superkingdom = taxon.rank_name_dictionary.get('superkingdom')
             plot_df.loc[
                 plot_df['plot_labelID'] == id, 'superkingdom'] = superkingdom
         else:
             plot_df.loc[plot_df['plot_labelID'] == id, 'superkingdom'] = np.nan
-
-
-def taxon_colouring(plot_df):
-    # TODO: test function, was part of create_3D_plot()
-
-    # colour scales for the superkingdoms
-    sk_colour_scales = {'Bacteria': 'deep',
-                        'Eukaryota': 'matter',
-                        'Archaea': 'Brwnyl',
-                        'Viruses': 'deep',
-                        None: 'gray'}
-
-    for sk, colour_scale in sk_colour_scales.items():
-        # count amount of distinct labels per superkingdom
-        distinct_labels_count = plot_df.loc[
-            plot_df['superkingdom'] == sk, 'plot_label'].value_counts(
-            dropna=False).to_frame()
-        if not distinct_labels_count.empty:
-            # create colour scale for superkingdom
-            colours = pd.Series(
-                px.colors.sample_colorscale(colour_scale, np.arange(0.1, 0.9,
-                                                                    0.8 / len(
-                                                                        distinct_labels_count))),
-                index=distinct_labels_count.index)
-            if sk == 'Archaea':
-                colours = n_colors('rgb(255, 255, 200)', 'rgb(255, 255, 0)',
-                                   len(distinct_labels_count), colortype='rgb')
-            # map to data frame
-            plot_df['plot_colour'] = plot_df['plot_label'].map(colours)
-        else:
-            pass
-
-
-def taxon_shaping(plot_df):
-    # TODO: test function, was part of create_3D_plot()
-    sk_shape = {'Bacteria': 'circle',
-                'Eukaryota': 'circle',
-                'Archaea': 'circle',
-                'Viruses': 'circle',
-                None: 'circle',
-                np.nan: 'circle',
-                'NA': 'circle'}
-
-    plot_df['plot_shape'] = plot_df['superkingdom'].map(sk_shape)
 
 
 def colourscale_to_lengths(lengths, colourscale):
@@ -218,7 +171,7 @@ def save_gif(cfg, fig):
 
 
 
-def create_3D_plot(cfg, genes, pca_obj, variables, pca_coordinates):
+def create_3D_plot(cfg, all_data_df, pca_obj, variables, pca_coordinates, query_label):
     """
 
     Args:
@@ -229,19 +182,11 @@ def create_3D_plot(cfg, genes, pca_obj, variables, pca_coordinates):
 
     """
 
-    # read the temporarily create file with query name and query plot label to use in plots
-    with open(cfg.output_path + 'tmp/tmp.query_label', 'r') as tmp_query_info:
-        query_label_name = next(tmp_query_info).strip()
-        query_name = next(tmp_query_info).strip()
 
-    plot_df = gene_obj2panda(genes)
 
     # ________________ PLOT PREPARATION _______________ #
 
-    # subset data to remove outliers
-    # (only for generating plots for presentations etc.)
-    plot_df = plot_df[plot_df.PC_1 <= 15]
-
+    plot_df = all_data_df
 
     # frequency information for labels in plots
     plot_df['label_count'] = plot_df['plot_label'].map(
@@ -262,6 +207,9 @@ def create_3D_plot(cfg, genes, pca_obj, variables, pca_coordinates):
                        SeqIO.parse(cfg.proteins_path, "fasta")}
     # merge to data table
     plot_df['prot_seq'] = plot_df['fasta_header'].map(fasta_sequences)
+    # reformat prot seq for plot hover label (insert html line breaks)
+    plot_df['plot_seqs'] = plot_df['prot_seq'].apply(
+        lambda x: insert_string2string(str(x), '</br>', 70))
 
     ## prepare data for hover window display
     # replace bools to yes and no
@@ -276,13 +224,11 @@ def create_3D_plot(cfg, genes, pca_obj, variables, pca_coordinates):
     plot_df['g_covdeviations'] = g_covdev_cols.apply(
         lambda x: '; '.join(x.dropna().astype(str)), axis=1)
 
-    # reformat prot seq for plot hover label (insert html line breaks)
-    plot_df['plot_seqs'] = plot_df['prot_seq'].apply(
-        lambda x: insert_string2string(str(x), '</br>', 70))
+
 
 
     traces = plot_df['plot_label'].unique()
-    traces_reordered = [plot_df.loc[plot_df['plot_label'] == query_label_name,
+    traces_reordered = [plot_df.loc[plot_df['plot_label'] == query_label,
                             'plot_label'][0]]
     try:
         traces_reordered.append(plot_df.loc[plot_df['plot_label'] == "Unassigned",
@@ -302,7 +248,7 @@ def create_3D_plot(cfg, genes, pca_obj, variables, pca_coordinates):
     plot_df.drop('sk_sort', axis=1, inplace=True)
 
     ## assign colours
-    plot_df = default_colouring(plot_df, query_label_name, sk_sorted_labels, 'Rainbow')
+    plot_df = default_colouring(plot_df, query_label, sk_sorted_labels, 'Rainbow')
 
     ## create plot
     # subset data into three groups to load them in distinct traces
@@ -313,9 +259,9 @@ def create_3D_plot(cfg, genes, pca_obj, variables, pca_coordinates):
     for label in traces_reordered:
         labels = plot_df.loc[plot_df['plot_label'] == label, :]
         fig.add_trace(go.Scatter3d(
-            x=plot_df.loc[plot_df['plot_label'] == label, 'PC_1'],
-            y=plot_df.loc[plot_df['plot_label'] == label, 'PC_2'],
-            z=plot_df.loc[plot_df['plot_label'] == label, 'PC_3'],
+            x=plot_df.loc[plot_df['plot_label'] == label, 'PC 1'],
+            y=plot_df.loc[plot_df['plot_label'] == label, 'PC 2'],
+            z=plot_df.loc[plot_df['plot_label'] == label, 'PC 3'],
             name=plot_df.loc[plot_df['plot_label'] == label, 'plot_label_freq'][0],
             mode='markers',
             marker=dict(
@@ -330,7 +276,7 @@ def create_3D_plot(cfg, genes, pca_obj, variables, pca_coordinates):
                             </br>Coverage: {row['g_coverages']} (SD from contig mean: {row['g_covdeviations']}) \
                             </br>Terminal: {row['g_terminal']} (Genes on contig: {row['c_num_of_genes']}) \
                             </br>LCA: {row['lca']} \
-                            </br>Best hit: {row['best_hit']} (e-value: {row['bh_evalue']}; pident: {row['bh_pident']}) \
+                            </br>Best hit: {row['best_hit']} (e-value: {row['bh_evalue']}; pident: {row['bh_pident']}; bitscore: {row['bh_bitscore']}) \
                             </br>Seq: {row['plot_seqs']}" for index, row in plot_df.loc[plot_df['plot_label'] == label].iterrows()],
             hoverinfo='text',
             showlegend=True
@@ -341,7 +287,7 @@ def create_3D_plot(cfg, genes, pca_obj, variables, pca_coordinates):
     # tight layout
     fig.update_layout(
         template="plotly_white",
-        title=query_name,
+        title=cfg.taxon_name,
         scene=dict(
             xaxis_title="PC 1",
             yaxis_title="PC 2",
@@ -422,7 +368,8 @@ def create_3D_plot(cfg, genes, pca_obj, variables, pca_coordinates):
             hoverinfo='text'
         ))
 
-    fig.update_layout(legend=dict(groupclick="togglegroup"))
+    fig.update_layout(legend=dict(groupclick="togglegroup"),
+                      modebar_add=["v1hovermode"])
     fig.write_html(cfg.output_path + "taxonomic_assignment/3D_plot.html")
 
     return plot_df
@@ -439,115 +386,33 @@ def create_krona_plot(cfg, data):
         logging.error('Error message:\n' + out_krona.stderr.decode())
 
 
-def taxon_sunburst(cfg, data):
-    """ create input for hierarchic taxon sunburst plot
+def create_gene_table_taxon_assignment(cfg, gff_df, df):
 
-    :param cfg:
-    :param data:
-    :return:
-    """
+    out_df = df.merge(gff_df[['start', 'end', 'upstream_gene', 'downstream_gene']],
+                      left_index=True, right_index=True)
 
-    sunburst_dict = {}
-    childs_dict = {}  # key: taxon_parent , value: {taxon_childs}
-    parent_dict = {}  # key: taxon_child , value: taxon_parent
-    leaves_count = data['taxon_assignment'].value_counts(
-        dropna=False).to_frame()
-    leaves_count.drop('Unassigned', inplace=True, errors="ignore")
-
-    for taxon in data['taxon_assignmentID'].unique():
-        if taxon == "NA":
-            continue
-        g_taxon = taxopy.Taxon(taxon, TAX_DB)
-        ta_lineage = g_taxon.name_lineage
-        for i in range(len(ta_lineage) - 1):
-            if ta_lineage[i + 1] in childs_dict.keys():  # parent
-                childs_dict[ta_lineage[i + 1]].add(ta_lineage[i])
-            else:
-                childs_dict[ta_lineage[i + 1]] = set([ta_lineage[i]])
-            parent_dict[ta_lineage[i]] = ta_lineage[i + 1]
-
-    while not leaves_count.empty:
-        del_leaves = []
-        for child, row in leaves_count.iterrows():
-            if childs_dict.get(child) != None:
-                continue
-            del_leaves.append(child)
-            sunburst_dict[child] = {"name": child,
-                                    "value": int(row['taxon_assignment'])}
-            parent = parent_dict.get(child)
-            while parent != None and child in childs_dict.get(parent):
-                if parent in sunburst_dict.keys():
-                    sunburst_dict[parent]["children"].append(
-                        sunburst_dict[child])
-                else:
-                    if parent in leaves_count.index:
-                        sunburst_dict[parent] = {"name": parent, "children": [
-                                                                                 sunburst_dict[
-                                                                                     child]] +
-                                                                             [{
-                                                                                  "name": '',
-                                                                                  "value": int(
-                                                                                      leaves_count[
-                                                                                          'taxon_assignment'][
-                                                                                          parent])}]}
-                        del_leaves.append(parent)
-                    else:
-                        sunburst_dict[parent] = {"name": parent, "children": [
-                            sunburst_dict[child]]}
-                childs_dict[parent].remove(child)
-                if len(childs_dict.get(parent)) >= 1:
-                    break
-                child = parent
-                parent = parent_dict.get(child)
-
-        leaves_count.drop(del_leaves, inplace=True)
-
-    sunburst_dict = sunburst_dict.get("root")
-
-    check_sunburst(data, sunburst_dict)
-
-    json.dump(sunburst_dict,
-              open(cfg.output_path + "taxonomic_assignment/sunburst_input.json",
-                   'w'))
+    columns_renamed = {}
+    for col in out_df.columns:
+        if 'PC ' in col:
+            columns_renamed[col] = f"Dim.{col.split()[1]}"
+    out_df.rename(columns=columns_renamed, inplace=True)
+    out_df.to_csv(f"{cfg.output_path}taxonomic_assignment/gene_table_taxon_assignment.csv", index_label='g_name')
 
 
-def check_sunburst(data, dict):
-    """ checks the output of taxon_sunburst() """
-
-    leaves_count = data['taxon_assignmentID'].value_counts(
-        dropna=False).to_frame()
-    leaves_count.drop('NA', inplace=True, errors="ignore")
-
-    for leave_taxon, row in leaves_count.iterrows():
-        print(leave_taxon)
-        leave_taxon = taxopy.Taxon(leave_taxon, TAX_DB)
-        ta_lineage = leave_taxon.name_lineage[::-1]
-        tmp_dict = dict
-        for taxon in ta_lineage[1:]:
-            for child in tmp_dict.get("children"):
-                if taxon == child.get("name"):
-                    tmp_dict = child
-                    bool = True
-                    break
-                else:
-                    bool = False
-            if not bool:
-                sys.exit("lineage in sunburst dictionary not correct")
-        if "children" in tmp_dict.keys():
-            for child in tmp_dict["children"]:
-                if child["name"] == "":
-                    tmp_dict = child
-        if tmp_dict.get("value") != row["taxon_assignmentID"]:
-            sys.exit("taxon count in sunburst dictionary not correct")
-
-
-def create_plots(cfg, genes, pca_obj, variables, pca_coordinates, tax_db):
+def create_plots(cfg, genes, pca_obj, variables, pca_coordinates,
+                 query_label, tax_db, gff_df):
     global TAX_DB
     TAX_DB = tax_db
 
-    data = create_3D_plot(cfg, genes, pca_obj, variables, pca_coordinates)
-    create_krona_plot(cfg, data)
-    # taxon_sunburst(cfg, data)
+    all_data_df = gene_data2panda(cfg, genes, pca_coordinates)
+    create_gene_table_taxon_assignment(cfg, gff_df, all_data_df)
+    create_3D_plot(cfg, all_data_df, pca_obj, variables, pca_coordinates, query_label)
+    #TODO: krona optional
+    # if cfg.create_krona:
+    create_krona_plot(cfg, all_data_df)
+
+    return all_data_df
+
 
 def make_selectable(html_path):
     """Make text in hoverwindows in 3D plot selectable.
@@ -658,7 +523,7 @@ def make_selfcontained(html_file_path, html_dependencies_dir, html_out_path):
         html_file.write(str(soup))
 
 
-def change_title(output_path, html_out_path):
+def change_title(cfg, output_path, html_out_path):
     """Change title of html file to species name.
 
     Reads species name from file temporarily created from
@@ -667,12 +532,8 @@ def change_title(output_path, html_out_path):
     Args:
       output_path: path to directory of taXaminer report
       html_out_path: path to HTML plot file
+      :param cfg:
     """
-
-    # read species name from temporary file
-    with open(output_path+'tmp/tmp.query_label', 'r') as tmp_file:
-        next(tmp_file)
-        query_name = next(tmp_file).strip()
 
     with open(html_out_path) as html_file:
         soup = bs(html_file, 'html.parser')
@@ -682,7 +543,7 @@ def change_title(output_path, html_out_path):
             title.extract()
         # replace with new title
         new_title = soup.new_tag('title')
-        new_title.string = query_name
+        new_title.string = cfg.taxon_name
         soup.head.append(new_title)
 
     # write modified HTML to same location
@@ -711,14 +572,14 @@ def perform_adjustments(cfg):
     # make_selfcontained(html_file_path, html_dependencies_dir, html_out_path)
 
     make_selectable(html_file_path)
-    change_title(cfg.output_path, html_file_path)
+    change_title(cfg, cfg.output_path, html_file_path)
 
 
 def main():
     """Call module directly with preprocessed config file"""
     config_path = sys.argv[1]
     # create class object with configuration parameters
-    cfg = checkData.cfg2obj(config_path)
+    cfg = checkInput.cfg2obj(config_path)
 
     #TODO: add genes
     genes = None
