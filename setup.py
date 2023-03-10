@@ -28,7 +28,8 @@ setup(
         'scikit-learn',
         'scipy',
         'umap-learn',
-        'kaleido'
+        'kaleido',
+        'pysam'
     ],
     entry_points={
         'console_scripts': ["taxaminer.run = taxaminer.runTaXaminer:main",

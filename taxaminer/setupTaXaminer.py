@@ -62,31 +62,6 @@ def check_executable(cmd_dict):
         print("Installation of diamond failed. Please try again "
                         "by running\n\nconda install -c bioconda diamond\n")
 
-    # check samtools
-    print("checking samtools")
-    check_samtools = subprocess.run(
-        [f"{cmd_dict.get('samtools')} --version"],
-        shell=True, capture_output=True)
-    if check_samtools.returncode != 0:
-        print("Installation of samtools failed. Please try again "
-                        "by running\n\nconda install -c bioconda samtools==1.15\n")
-
-    # check bedtools
-    print("checking bedtools")
-    check_bedtools = subprocess.run([f"{cmd_dict.get('bedtools')} --version"],
-                                      shell=True, capture_output=True)
-    if check_bedtools.returncode != 0:
-        print("Installation of bedtools failed. Please try again "
-                        "by running\n\nconda install -c bioconda bedtools\n")
-
-    # check bowtie2
-    print("checking bowtie2")
-    check_bowtie2 = subprocess.run([f"{cmd_dict.get('bowtie2')} --version"],
-                                     shell=True, capture_output=True)
-    if check_bowtie2.returncode != 0:
-        print("Installation of Bowtie2 failed. Please try again "
-                        "by running\n\nconda install -c bioconda bowtie2\n")
-
     # check Krona tools
     print("checking krona tools")
     check_krona = subprocess.run([f"{cmd_dict.get('krona')}"],
@@ -150,34 +125,6 @@ def setup_conda():
                         "by running\n\nconda install -c bioconda diamond\n")
     cmd_dict["diamond"] = "diamond"
 
-    # install bedtools
-    print("installing bedtools")
-    install_bedtools = subprocess.run(["conda install -c bioconda bedtools -y"],
-                                      shell=True, capture_output=True)
-    if install_bedtools.returncode != 0:
-        print("Installation of bedtools failed. Please try again "
-                        "by running\n\nconda install -c bioconda bedtools\n")
-    cmd_dict["bedtools"] = "bedtools"
-
-    # install samtools
-    print("installing samtools")
-    install_samtools = subprocess.run(
-        ["conda install -c bioconda samtools==1.15 -y"],
-        shell=True, capture_output=True)
-    if install_samtools.returncode != 0:
-        print("Installation of samtools failed. Please try again "
-                        "by running\n\nconda install -c bioconda samtools==1.15\n")
-    cmd_dict["samtools"] = "samtools"
-
-    # install bowtie2
-    print("installing bowtie2")
-    install_bowtie2 = subprocess.run(["conda install -c bioconda bowtie2 -y"],
-                                     shell=True, capture_output=True)
-    if install_bowtie2.returncode != 0:
-        print("Installation of Bowtie2 failed. Please try again "
-                        "by running\n\nconda install -c bioconda bowtie2\n")
-    cmd_dict["bowtie2"] = "bowtie2"
-
     # install Krona tools
     print("installing krona tools")
     install_krona = subprocess.run(["conda install -c bioconda krona -y"],
@@ -217,61 +164,6 @@ def setup_locally(tool_path):
     open_tarfile(f"diamond-linux64.tar.gz", toolPath, "gz")
     cmd_dict["diamond"] = f"{toolPath}diamond"
 
-    # install samtools
-    print("installing samtools")
-    st_version = "1.16.1"
-    download_file(f"samtools-{st_version}.tar.bz2",
-                  "https://github.com/samtools/samtools/releases/download/"
-                  f"{st_version}/samtools-{st_version}.tar.bz2")
-    open_tarfile(f"samtools-{st_version}.tar.bz2", toolPath, "bz2")
-    os.chdir(pathlib.Path(f"samtools-{st_version}/"))
-    failure = True # check if installation failed
-    samtools_configure = subprocess.run([f"./configure --prefix={toolPath}"],
-                                       shell=True, capture_output=True)
-    if samtools_configure.returncode == 0:
-        samtools_make = subprocess.run(["make"],
-                                   shell=True, capture_output=True)
-        if samtools_make.returncode == 0:
-            samtools_makeinstall = subprocess.run(["make install"],
-                                       shell=True, capture_output=True)
-            if samtools_makeinstall.returncode == 0:
-                failure = False
-    os.chdir(toolPath)
-    if failure:
-        print("Installation of samtools failed. Please try installing manually")
-    else:
-        os.symlink(f"samtools-{st_version}/samtools",
-                   f"samtools")
-    cmd_dict["samtools"] = f"{toolPath}samtools"
-
-    # install bedtools
-    print("installing bedtools")
-    bt_version = "2.30.0"
-    download_file(f"bedtools.static.binary",
-                  "https://github.com/arq5x/bedtools2/releases/download/"
-                  f"v{bt_version}/bedtools.static.binary")
-    shutil.move(f"bedtools.static.binary", f"bedtools")
-    os.chmod(f"bedtools", stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
-    cmd_dict["bedtools"] = f"{toolPath}bedtools"
-
-    # install bowtie2
-    print("installing bowtie2")
-    b2_version = "2.5.0"
-    download_file(f"bowtie2-{b2_version}-linux-x86_64.zip",
-                  "https://sourceforge.net/projects/bowtie-bio/files/bowtie2/"
-                  f"{b2_version}/bowtie2-{b2_version}-linux-x86_64.zip")
-    with zipfile.ZipFile(f"bowtie2-{b2_version}-linux-x86_64.zip",
-                         "r") as zip_ref:
-        zip_ref.extractall(toolPath)
-    for script in glob.glob(f"bowtie2-{b2_version}-linux-x86_64/bowtie*"):
-        os.chmod(script, stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH |
-                            stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)
-    os.symlink(f"bowtie2-{b2_version}-linux-x86_64/bowtie2",
-               "bowtie2")
-    os.symlink(f"bowtie2-{b2_version}-linux-x86_64/bowtie2-build",
-               "bowtie2-build")
-    cmd_dict["bowtie2"] = f"{toolPath}bowtie2"
-
     # install Krona tools
     print("installing krona tools")
     k_version = "2.8.1"
@@ -295,11 +187,8 @@ def setup_locally(tool_path):
     setup_krona_taxonomy(krona_update_path)
 
     # remove downloads
-    os.remove(f"bowtie2-{b2_version}-linux-x86_64.zip")
     os.remove("diamond-linux64.tar.gz")
     os.remove(f"KronaTools-{k_version}.tar")
-    os.remove(f"samtools-{st_version}.tar.bz2")
-    shutil.rmtree(f"./share/")
 
     return cmd_dict
 
@@ -339,7 +228,10 @@ def main():
             taxaminer_paths_save = eval(f.readline().strip())
             data_path = taxaminer_paths_save.get("data_path")
             tool_path = taxaminer_paths_save.get("tool_path")
-            cmd_dict = dict(taxaminer_paths_save.get("cmds"))
+            if taxaminer_paths_save.get("cmds"):
+                cmd_dict = dict(taxaminer_paths_save.get("cmds"))
+            else:
+                cmd_dict = None
     else:
         taxaminer_paths_save = None
         data_path = None

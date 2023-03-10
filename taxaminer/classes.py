@@ -15,11 +15,11 @@ class Assembly:
     """Object holding information regarding the assembly
     """
 
-    def __init__(self, gff_path, fasta_path, pbc_paths, output_path):
+    def __init__(self, gff_path, fasta_path, bam_paths, output_path):
         self.gff_path = gff_path
         self.fasta_path = fasta_path
-        self.pbc_paths = pbc_paths
-        self.num_pbc = max(1, len(pbc_paths))
+        self.bam_paths = bam_paths
+        self.num_bam = max(1, len(bam_paths))
         self.output_path = output_path
         self.output_dir = self.output_path + "gene_info"
 
@@ -41,11 +41,11 @@ class Assembly:
     def get_fasta_path(self):
         return self.fasta_path
 
-    def get_pbc_paths(self):
-        return self.pbc_paths
+    def get_bam_paths(self):
+        return self.bam_paths
 
-    def get_num_pbc(self):
-        return self.num_pbc
+    def get_num_bam(self):
+        return self.num_bam
 
     def get_output_path(self):
         return self.output_path
@@ -160,11 +160,11 @@ class Contig:
         self.centre_corrector = 0 # see method set_centre_corrector() for detailed explanation
         self.set_centre_corrector()
 
-        self.per_base_coverages = {pbc_index: [] for pbc_index in a.get_pbc_paths().keys()} # array that holds the coverage per base in this contig
+        self.per_base_coverages = {bam_index: [] for bam_index in a.get_bam_paths().keys()} # array that holds the coverage per base in this contig
                                 # note that the element at index i is the coverage at base i+1
                                 # (indexing in python is 0-based but sequences are 1-based)
-        self.coverage = {pbc_index: np.nan for pbc_index in a.get_pbc_paths().keys()}
-        self.coverage_sd = {pbc_index: np.nan for pbc_index in a.get_pbc_paths().keys()}
+        self.coverage = {bam_index: np.nan for bam_index in a.get_bam_paths().keys()}
+        self.coverage_sd = {bam_index: np.nan for bam_index in a.get_bam_paths().keys()}
 
         # set that will hold all positions of Ns in this contig (1-based)
         self.positions_of_Ns = None # used in --> add_base_coverage() function
@@ -172,8 +172,8 @@ class Contig:
 
         self.genes = [] # fill with gene names in order to be able to access them from all_genes
 
-        self.gene_coverage_mean = {pbc_index: np.nan for pbc_index in a.get_pbc_paths().keys()}
-        self.gene_coverage_sd = {pbc_index: np.nan for pbc_index in a.get_pbc_paths().keys()}
+        self.gene_coverage_mean = {bam_index: np.nan for bam_index in a.get_bam_paths().keys()}
+        self.gene_coverage_sd = {bam_index: np.nan for bam_index in a.get_bam_paths().keys()}
 
         self.gene_lengths_mean = None
         self.gene_lengths_sd = None
@@ -197,10 +197,10 @@ class Contig:
     def get_length(self):
         return self.length
 
-    def get_length_of_covered_bases(self, pbc_index):
+    def get_length_of_covered_bases(self, bam_index):
         """Return how many bases are covered."""
-        pbc_without_nans = [cov for cov in self.per_base_coverages[pbc_index] if not np.isnan(cov)]
-        return len(pbc_without_nans)
+        bam_without_nans = [cov for cov in self.per_base_coverages[bam_index] if not np.isnan(cov)]
+        return len(bam_without_nans)
 
     def get_centre(self):
         return ((self.length / 2) + 0.5) # returns the number of the base at the centre
@@ -311,40 +311,44 @@ class Contig:
         self.positions_of_Ns = N_positions
 
 
-    def add_base_coverage(self, pbc_index, base, coverage):
+    #def add_base_coverage(self, bam_index, base, coverage):
+    def add_base_coverage(self, bam_index, coverage_array):
+
         """Adds coverage info for the base i to per_base_coverages[i-1].
         Note: indices of per_base_coverage are 0-based,
         while coverage file is 1-based."""
 
-        # if bases are skipped in the PBC file (because no coverage is given)
-        # add dummy values to the coverage array (as to avoid a shift in positions)
-        while len(self.per_base_coverages.get(pbc_index)) < (base -1):
-            # if the base without coverage is an N
-            if base in self.positions_of_Ns:
-                self.per_base_coverages[pbc_index].append(np.nan) # add a NaN
-                # --> the base (and its missing cov) will be ignored in calculating cov metrics
-            else:
-                # if the base is not an N
-                # add a 0 --> the base will be included in the cov metrics calculation
-                self.per_base_coverages[pbc_index].append(0)
+        self.per_base_coverages[bam_index] = coverage_array
 
-        # check whether coverage info will be inserted at the right place
-        # e.g. for coverage info for base 1, we want per_base_coverages to have a length of 0
-        if len(self.per_base_coverages.get(pbc_index)) == (base-1):
-            self.per_base_coverages[pbc_index].append(coverage)
-
-        else:
-            print("ERROR! Unexpected base position in per base coverage info") # THROW ERROR
-            print("Contig: ", self.get_name(),
-                  ", Expected Base: ", (len(self.per_base_coverages.get(pbc_index))+1), ", Got Base: ", base)
+        # # if bases are skipped in the bam file (because no coverage is given)
+        # # add dummy values to the coverage array (as to avoid a shift in positions)
+        # while len(self.per_base_coverages.get(bam_index)) < (base -1):
+        #     # if the base without coverage is an N
+        #     if base in self.positions_of_Ns:
+        #         self.per_base_coverages[bam_index].append(np.nan) # add a NaN
+        #         # --> the base (and its missing cov) will be ignored in calculating cov metrics
+        #     else:
+        #         # if the base is not an N
+        #         # add a 0 --> the base will be included in the cov metrics calculation
+        #         self.per_base_coverages[bam_index].append(0)
+        #
+        # # check whether coverage info will be inserted at the right place
+        # # e.g. for coverage info for base 1, we want per_base_coverages to have a length of 0
+        # if len(self.per_base_coverages.get(bam_index)) == (base-1):
+        #     self.per_base_coverages[bam_index].append(coverage)
+        #
+        # else:
+        #     print("ERROR! Unexpected base position in per base coverage info") # THROW ERROR
+        #     print("Contig: ", self.get_name(),
+        #           ", Expected Base: ", (len(self.per_base_coverages.get(bam_index))+1), ", Got Base: ", base)
 
 
     def compute_own_coverage_info(self):
         # since, while filling the per_base_coverage array,
         # missing base coverages are substituted with NaNs
         # compute mean and SD while igonring NaNs
-        self.coverage = {pbc_index: (np.nanmean(coverages) if coverages else np.nan) for pbc_index, coverages in self.per_base_coverages.items()}
-        self.coverage_sd = {pbc_index: (np.nanstd(coverages) if coverages else np.nan) for pbc_index, coverages in self.per_base_coverages.items()}
+        self.coverage = {bam_index: (np.nanmean(coverages) if coverages else np.nan) for bam_index, coverages in self.per_base_coverages.items()}
+        self.coverage_sd = {bam_index: (np.nanstd(coverages) if coverages else np.nan) for bam_index, coverages in self.per_base_coverages.items()}
 
     def no_coverage_info(self):
         if sum([len(cov) if cov else 0 for cov in self.per_base_coverages.values()]) == 0:
@@ -352,11 +356,11 @@ class Contig:
         else:
             return False
 
-    def get_coverage(self, pbc_index):
-        return self.coverage.get(pbc_index)
+    def get_coverage(self, bam_index):
+        return self.coverage.get(bam_index)
 
-    def get_coverage_sd(self, pbc_index):
-        return self.coverage_sd.get(pbc_index)
+    def get_coverage_sd(self, bam_index):
+        return self.coverage_sd.get(bam_index)
 
 
     def compute_gene_coverage_info(self, a):
@@ -377,17 +381,17 @@ class Contig:
             # since, while filling the per_base_coverage array,
             # missing base coverages are substituted with NaNs
             # get array WITHOUT NaNs
-            gene_pbc_without_nans = {}
-            for pbc_index in a.get_pbc_paths().keys():
-                gene_pbc_without_nans[pbc_index] = [cov for cov in self.per_base_coverages[pbc_index][cov_start:cov_end]
+            gene_bam_without_nans = {}
+            for bam_index in a.get_bam_paths().keys():
+                gene_bam_without_nans[bam_index] = [cov for cov in self.per_base_coverages[bam_index][cov_start:cov_end]
                                                 if not np.isnan(cov)]
 
-            gene_coverage = {pbc_index: (np.mean(coverages) if coverages else np.nan) for pbc_index, coverages in gene_pbc_without_nans.items()}
-            gene_coverage_sd = {pbc_index: (np.std(coverages, ddof=1) if coverages else np.nan) for pbc_index, coverages in gene_pbc_without_nans.items()}
+            gene_coverage = {bam_index: (np.mean(coverages) if coverages else np.nan) for bam_index, coverages in gene_bam_without_nans.items()}
+            gene_coverage_sd = {bam_index: (np.std(coverages, ddof=1) if coverages else np.nan) for bam_index, coverages in gene_bam_without_nans.items()}
             # set the coverage info for the gene
             gene.set_coverage_info(gene_coverage, gene_coverage_sd)
             # also set info on how many bases are covered in this gene
-            gene.set_length_of_covered_bases({pbc_index: len(coverages) for pbc_index, coverages in gene_pbc_without_nans.items()})
+            gene.set_length_of_covered_bases({bam_index: len(coverages) for bam_index, coverages in gene_bam_without_nans.items()})
 
 
 
@@ -396,11 +400,11 @@ class Contig:
         self.gene_coverage_mean = gene_cov_mean
         self.gene_coverage_sd = gene_cov_sd
 
-    def get_gene_coverage_mean(self, pbc_index):
-        return self.gene_coverage_mean[pbc_index]
+    def get_gene_coverage_mean(self, bam_index):
+        return self.gene_coverage_mean[bam_index]
 
-    def get_gene_coverage_sd(self, pbc_index):
-        return self.gene_coverage_sd[pbc_index]
+    def get_gene_coverage_sd(self, bam_index):
+        return self.gene_coverage_sd[bam_index]
 
     def get_coverage_array(self, start_pos, end_pos):
         """Return the coverage for all bases starting with
@@ -472,7 +476,7 @@ class Contig:
     def get_gene_lengths_sd(self):
         return self.gene_lengths_sd
 
-    def covdev_from_overall(self, mean_ref, sd_ref, pbc_index):
+    def covdev_from_overall(self, mean_ref, sd_ref, bam_index):
         """Indicates how much the contig cov deviates from mean contig cov,
         in units of contig cov SD (overall)."""
 
@@ -481,10 +485,10 @@ class Contig:
         if sd_ref == 0:
             return np.nan
         # deviation in units of 1 SD (overall)
-        dev_in_sd = abs(mean_ref - self.coverage.get(pbc_index)) / sd_ref
+        dev_in_sd = abs(mean_ref - self.coverage.get(bam_index)) / sd_ref
 
         # if own cov is smaller than overall contig cov mean
-        if self.coverage.get(pbc_index) < mean_ref:
+        if self.coverage.get(bam_index) < mean_ref:
             # return negative deviation
             return -dev_in_sd
         else:
@@ -580,10 +584,10 @@ class Gene:
         # set length
         self.length = self.end_pos - self.start_pos + 1
         self.percentage_of_contig_length = self.compute_percentage_of_contig_length(a)
-        self.length_of_covered_bases = {pbc_index: np.nan for pbc_index in a.get_pbc_paths().keys()}
+        self.length_of_covered_bases = {bam_index: np.nan for bam_index in a.get_bam_paths().keys()}
 
-        self.coverage = {pbc_index: np.nan for pbc_index in a.get_pbc_paths().keys()} # list of mean coverage for each cov profile
-        self.coverage_sd = {pbc_index: np.nan for pbc_index in a.get_pbc_paths().keys()} # dict of coverage SD for each coverage profile
+        self.coverage = {bam_index: np.nan for bam_index in a.get_bam_paths().keys()} # list of mean coverage for each cov profile
+        self.coverage_sd = {bam_index: np.nan for bam_index in a.get_bam_paths().keys()} # dict of coverage SD for each coverage profile
 
 
         self.absolute_pos = None
@@ -642,11 +646,11 @@ class Gene:
         self.coverage = coverage
         self.coverage_sd = coverage_sd
 
-    def get_coverage(self, pbc_index):
-        return self.coverage.get(pbc_index)
+    def get_coverage(self, bam_index):
+        return self.coverage.get(bam_index)
 
-    def get_coverage_sd(self, pbc_index):
-        return self.coverage_sd.get(pbc_index)
+    def get_coverage_sd(self, bam_index):
+        return self.coverage_sd.get(bam_index)
 
     def set_absolute_pos(self, position):
         self.absolute_pos = position
@@ -682,8 +686,8 @@ class Gene:
     def set_length_of_covered_bases(self, length):
         self.length_of_covered_bases = length
 
-    def get_length_of_covered_bases(self, pbc_index):
-        return self.length_of_covered_bases.get(pbc_index)
+    def get_length_of_covered_bases(self, bam_index):
+        return self.length_of_covered_bases.get(bam_index)
 
     def compute_percentage_of_contig_length(self, a):
         contig_length = a.get_contig(self.contig).get_length()
@@ -742,7 +746,7 @@ class Gene:
             return dev_in_sd
 
 
-    def covdev_from_contig(self, a, pbc_index):
+    def covdev_from_contig(self, a, bam_index):
         """Indicates how much the gene cov deviates from the mean gene coverage
         on the contig, in units of gene cov SD (contig)."""
 
@@ -751,25 +755,25 @@ class Gene:
             # no comparisons possible
             return np.nan
 
-        gene_cov_sd_contig = a.get_contig(self.contig).get_gene_coverage_sd(pbc_index)
+        gene_cov_sd_contig = a.get_contig(self.contig).get_gene_coverage_sd(bam_index)
         if gene_cov_sd_contig == 0:
             # no deviation from contig
             return np.nan
-        gene_cov_mean_contig = a.get_contig(self.contig).get_gene_coverage_mean(pbc_index)
+        gene_cov_mean_contig = a.get_contig(self.contig).get_gene_coverage_mean(bam_index)
 
 
         # deviation in units of 1 SD (contig)
-        dev_in_sd = abs(gene_cov_mean_contig - self.coverage[pbc_index]) / gene_cov_sd_contig
+        dev_in_sd = abs(gene_cov_mean_contig - self.coverage[bam_index]) / gene_cov_sd_contig
 
         # if own cov is smaller than gene cov mean on contig
-        if self.coverage[pbc_index] < gene_cov_mean_contig:
+        if self.coverage[bam_index] < gene_cov_mean_contig:
             # return negative deviation
             return -dev_in_sd
         else:
             return dev_in_sd
 
 
-    def covdev_from_overall(self, mean_ref, sd_ref, pbc_index):
+    def covdev_from_overall(self, mean_ref, sd_ref, bam_index):
         """Indicates how much the gene cov deviates from overall mean gene cov,
         in units of gene cov SD (overall)."""
 
@@ -778,10 +782,10 @@ class Gene:
         if sd_ref == 0:
             return np.nan
         # deviation in units of 1 SD (overall)
-        dev_in_sd = abs(mean_ref - self.coverage[pbc_index]) / sd_ref
+        dev_in_sd = abs(mean_ref - self.coverage[bam_index]) / sd_ref
 
         # if own cov is smaller than gene cov mean
-        if self.coverage[pbc_index] < mean_ref:
+        if self.coverage[bam_index] < mean_ref:
             # return negative deviation
             return -dev_in_sd
         else:

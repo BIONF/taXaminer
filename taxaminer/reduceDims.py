@@ -12,7 +12,7 @@ __version__ = "0.6.0"
 import numpy as np
 
 from . import classes
-from . import checkData
+from . import checkInput
 
 # import pathlib # to create directories
 # import operator # for quick comparisons
@@ -281,7 +281,7 @@ def compute_pca(cfg):
                            "c_covdev",
                            "c_genecovm",
                            "c_genecovsd"]
-        indexed_cov_cols = [f'{col}_{index}' for col in contig_cov_cols for index in cfg.pbc_paths.keys()]
+        indexed_cov_cols = [f'{col}_{index}' for col in contig_cov_cols for index in cfg.bam_paths.keys()]
 
         with open(f'{cfg.output_path}PCA/variables_excluded_from_PCA.txt',
                   'w') as excluded_cols_file:
@@ -304,7 +304,7 @@ def compute_pca(cfg):
             nan_columns.insert(0, 'new_col', data[col])
             nan_columns.rename(columns={"new_col": col}, inplace=True)
             # keep only those columns with less than 30% NaN values
-            data.drop(columns=col, inplace=True)
+            data = data.drop(columns=col)
     with open(f'{cfg.output_path}PCA/variables_excluded_from_PCA.txt', 'a') as excluded_cols_file:
         excluded_cols_file.write('contig related variables excluded due to more then 30% NaNs:\n')
         excluded_cols_file.write('\n'.join(list(nan_columns.columns)))
@@ -313,8 +313,10 @@ def compute_pca(cfg):
     # CLEAN DATA FROM NaNS -- ROWWISE
     # save the genes containing NaN values to a specific data frame
     genes_w_nans = data[data.isna().any(axis=1)]
-    # and print them to a file
-    genes_w_nans.to_csv(f'{cfg.output_path}PCA/genes_excluded_from_PCA.csv', index_label='g_name', na_rep='NA')
+    # and log their IDs
+    if not genes_w_nans.empty:
+        logging.info(f'Following genes with null values are excluded from PCA:\n{genes_w_nans.index.values}')
+
     # keep working only with the genes without NaNs (complete rows / cases)
     data = data.dropna()
 
@@ -362,7 +364,7 @@ def main():
     """Call module directly with preprocessed config file"""
     config_path = sys.argv[1]
     # create class object with configuration parameters
-    cfg = checkData.cfg2obj(config_path)
+    cfg = checkInput.cfg2obj(config_path)
 
     compute_pca(cfg)
 
