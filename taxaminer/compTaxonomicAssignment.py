@@ -849,7 +849,6 @@ def process_hits(cfg, tax_assignment_path, assignments_df, target_taxon, missing
 
     # empty file
     with open(tax_assignment_path, 'w') as file:
-        cfg.slim_diamond_results = True
         if cfg.slim_diamond_results:
             file.write('\t'.join(['qseqid', 'sseqid', 'pident', 'evalue',
                                   'bitscore', 'taxid', 'taxname']) + '\n')
@@ -859,18 +858,18 @@ def process_hits(cfg, tax_assignment_path, assignments_df, target_taxon, missing
                                   'sstart', 'send', 'evalue', 'bitscore',
                                   'taxid', 'taxname']) + '\n')
 
-        chunks = read_hit_file(cfg, chunk_size)
-        unmapped_proteins = []
-        pbar = tqdm(total=n_chunks,
-                    bar_format='{l_bar}{bar}| [{elapsed}<{remaining}, ' '{rate_fmt}{postfix}]')
+    chunks = read_hit_file(cfg, chunk_size)
+    unmapped_proteins = []
+    pbar = tqdm(total=n_chunks,
+                bar_format='{l_bar}{bar}| [{elapsed}<{remaining}, ' '{rate_fmt}{postfix}]')
 
-        for i in pool.imap_unordered(
-                calc_assignment, [(chunk, assignments_df, target_taxon, missing_taxids, TAX_DB) for chunk in chunks]):
-            pbar.update(1)
-            for gene_name, results in i[0].items():
-                add_ta2gene(gene_name, results, cfg, tax_assignment_path, assignments_df,
-                            target_taxon)
-            unmapped_proteins += i[1]
+    for i in pool.imap_unordered(
+            calc_assignment, [(chunk, assignments_df, target_taxon, missing_taxids, TAX_DB) for chunk in chunks]):
+        pbar.update(1)
+        for gene_name, results in i[0].items():
+            add_ta2gene(gene_name, results, cfg, tax_assignment_path, assignments_df,
+                        target_taxon)
+        unmapped_proteins += i[1]
 
 
     if pbar.n != n_chunks:
