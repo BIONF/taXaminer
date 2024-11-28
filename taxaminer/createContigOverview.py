@@ -180,7 +180,7 @@ def process_assignments(cfg, gff_df, all_data_df, TAX_DB):
         missing_taxids = missing_taxids | i[1]
 
     contigs = pd.DataFrame(df_row_list)
-    contigs.to_csv(f"{cfg.output_path}taxonomic_assignment/contig_assignments.csv", index_label='c_name')
+    contigs.to_csv(f"{cfg.output_path}taxonomic_assignment/contig_assignments.csv", index=False, header=False)
 
 
 def main():
