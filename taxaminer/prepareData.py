@@ -46,8 +46,10 @@ def set_seqs(cfg, gff_df, gene, contig_seq, proteins_file):
 
     # sort coding feature by start coordinate
     sorted_coding_features = sorted(gene.coding_features, key=lambda cds: gff_df.loc[cds].start)
+    transl_tables = set()
     for coding_feature in sorted_coding_features:
         cds = gff_df.loc[coding_feature]
+        transl_tables.add(str(cds.transl_table))
         if not cfg.use_phase:
             # per default do not use the phase info
             seq += str(Seq.Seq(contig_seq[cds.start-1:cds.end]))
@@ -64,7 +66,17 @@ def set_seqs(cfg, gff_df, gene, contig_seq, proteins_file):
     if len(seq)%3 != 0:
         seq += ("N"*(3-(len(seq)%3)))
 
-    protein_seq = str(Seq.Seq(seq).translate(table=int(gene.transl_table)))
+    if len(transl_tables) == 1:
+        transl_table = transl_tables.pop()
+    if (len(transl_tables) >= 2) or (
+            transl_table != gene.transl_table and gene.transl_table != '1'):
+        # a translational table is in most cases only given for CDS features
+        # gene feature has default value of 1 given for translational table
+        logging.warning(f'Ambiguous translational table for gene {gene.name}. '
+                        f'(Values given in GFF: {",".join(transl_tables)}{gene.transl_table})'
+                        f'Continuing with table given for gene entry.')
+        transl_table = gene.transl_table
+    protein_seq = str(Seq.Seq(seq).translate(table=int(transl_table)))
 
     #>#write_seq2file(proteins_file, gene.transcript_id, protein_seq)
 
