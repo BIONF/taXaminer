@@ -160,7 +160,7 @@ def process_assignments(cfg, gff_df, all_data_df, TAX_DB):
 
     missing_taxids = set()
 
-    contigs_df_header = ['c_name', 'num_of_genes', 'percentage_target', 'lca',
+    contigs_df_header = ['c_name', 'num_of_genes', 'lca', 'lcaID', 'percentage_target',
         'most_abundant_taxon', 'target_bitscore_mean', 'target_bitscore_sd',
         'target_evalue_mean', 'target_evalue_sd', 'other_bitscore_mean',
         'other_bitscore_sd', 'other_evalue_mean',  'other_evalue_sd']
