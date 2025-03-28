@@ -35,7 +35,7 @@ taxaminer.setup -o </path/to/tool/directory/>
 ```
 To download and build the database, use:
 ```
-taxaminer.setup --db -d </path/to/database/directory/>
+taxaminer.setup -db -d </path/to/database/directory/>
 ```
 Use the following command to use an existing database.
 ```
