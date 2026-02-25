@@ -95,8 +95,17 @@ def main():
     # create dictionaries for output
     pathlib.Path(f'{output_path}tmp/').mkdir(parents=True, exist_ok=True)
 
-    database_dir = eval(
-        open(f"{SCRIPT_DIR}/pathconfig.txt", 'r').readline().strip()).get('data_path')
+    if pathlib.Path(f"{SCRIPT_DIR}/pathconfig.txt").is_file():
+        database_dir = eval(
+            open(f"{SCRIPT_DIR}/pathconfig.txt", 'r').readline().strip()).get('data_path')
+    else:
+        logging.error('taXaminer setup not completed. Please refer to the documentation ' \
+                      'at https://github.com/BIONF/taXaminer for instructions on how to run "taXaminer.setup".')
+        sys.exit()
+    if not pathlib.Path(database_dir).is_dir():
+        logging.error(f'Database directory not found. Please check path:\n\t{database_dir}\n' \
+                      'Make sure to run "taXaminer.setup" to set up the necessary database files.')
+        sys.exit()
 
     TAX_DB = taxopy.TaxDb(nodes_dmp=database_dir + "/nodes.dmp",
                           names_dmp=database_dir + "/names.dmp",

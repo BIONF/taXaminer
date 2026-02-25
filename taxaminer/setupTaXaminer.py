@@ -370,6 +370,15 @@ def main():
         setup_db(args.database, args.dataPath, cmd_dict)
     elif args.dataPath:
         # database already precomputed -> adjust the path
+        required_files = ["db.dmnd", "nodes.dmp", "names.dmp", "merged.dmp"]
+        if os.path.exists(args.dataPath):
+            for f in required_files:
+                if not os.path.exists(os.path.join(args.dataPath, f)):
+                    logger.error(f"Required database file {f} not found in path {args.dataPath}")
+                    sys.exit()
+        else:
+            logger.error(f"Database path {args.dataPath} does not exist")
+            sys.exit()
         logger.info(f"Setting database path to \n\t{os.path.abspath(args.dataPath)}")
         data_path = os.path.abspath(args.dataPath)
 
