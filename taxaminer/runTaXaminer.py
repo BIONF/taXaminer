@@ -79,6 +79,10 @@ def main():
     logger.setLevel(log_level)
     logger.addHandler(handler)
 
+    # reduce verbosity of kaleido/chromium logger when plotting
+    logging.getLogger("kaleido").setLevel(logging.ERROR) 
+    logging.getLogger("choreographer").setLevel(logging.ERROR) 
+
     # read config file and retrieve output path
     if pathlib.Path(args.config_path).is_file():
         user_config_dict = yaml.safe_load(open(args.config_path, 'r'))

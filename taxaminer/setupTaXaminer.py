@@ -218,6 +218,9 @@ def setup_conda():
                         'by running\n\nconda install -c bioconda "diamond>=2.1.7"\n')
     cmd_dict["diamond"] = "diamond"
 
+    logging.info("installing chrome for kaleido")    
+    import kaleido
+    kaleido.get_chrome_sync()
 
     return cmd_dict
 
@@ -242,6 +245,10 @@ def setup_locally(tool_path):
 
     # remove downloads
     os.remove("diamond-linux64.tar.gz")
+
+    logging.info("installing chrome for kaleido")    
+    import kaleido
+    kaleido.get_chrome_sync()
 
     return cmd_dict
 
