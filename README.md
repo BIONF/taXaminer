@@ -37,6 +37,8 @@ To download and build the database, use:
 ```
 taxaminer.setup -db -d </path/to/database/directory/>
 ```
+Per default, the NCBI non-redundant protein database is downloaded and prepared. Other available options are the UniRef databases and UniProtKB/Swiss-Prot. See the help menu (`taxaminer.setup --help`) for details. 
+
 Use the following command to use an existing database.
 ```
 taxaminer.setup -d </path/to/existing_database/directory/>
