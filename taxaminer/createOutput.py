@@ -51,7 +51,8 @@ def rotate_z(x, y, z, theta):
 
 def gene_data2panda(cfg, assignment_df, pca_coordinates):
     gene_features = pd.read_csv(pathlib.Path(f"{cfg.output_path}gene_info/raw_gene_table.csv"),
-                                index_col=0)
+                                na_values={'g_name' : []}, keep_default_na=False)
+    gene_features.set_index('g_name', inplace=True)
 
     df = gene_features.merge(
         pca_coordinates, how='left', left_index=True, right_index=True).merge(
