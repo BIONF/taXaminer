@@ -28,7 +28,7 @@ setup(
         'scikit-learn',
         'scipy',
         'umap-learn',
-        'kaleido',
+        'kaleido<1.0',
         'pysam',
         'tqdm',
         'psutil'

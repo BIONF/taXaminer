@@ -175,7 +175,7 @@ def main():
                         'plot_label', 'plot_labelID'],
             dtype={'taxon_assignmentID': 'str', 'best_hitID': 'str',
                     'refinedLCAID': 'str', 'lcaID': 'str', 'plot_labelID': 'Int64'},
-            keep_default_na=False)
+            keep_default_na=False, na_values={'g_name' : []})
         # replace empty value with None
         taxonomic_assignment = taxonomic_assignment.replace(r'^\s*$', None, regex=True)
         target_taxon = compTaxonomicAssignment.init_taxopyon(cfg.taxon_id, set(), TAX_DB)
