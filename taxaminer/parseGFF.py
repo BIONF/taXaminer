@@ -20,6 +20,7 @@ __author__ = "Freya Arthen"
 import logging
 import sys
 import pandas as pd
+import copy
 
 
 from . import checkInput
@@ -306,8 +307,10 @@ def process_gene(gene, parent_ids, transcripts, gene_features, non_transcript_ty
 
     else:
         # gene == coding type
-        coding_features = [gene]
-        longest_transcript = gene
+        gene_cds = copy.deepcopy(gene)
+        gene_cds['type'] = 'CDS'
+        coding_features = [gene_cds]
+        longest_transcript = gene_cds
 
     if not coding_features:
         logging.warning(f"Coding features of {gene.get('id')} inconclusive."
